@@ -23,9 +23,10 @@ func New(filePath string) (*Dictionary, error) {
 	return d, nil
 }
 
-func (d *Dictionary) Add(word string, definition string) error {
+func (d *Dictionary) Add(word string, definition string, done chan<- error) {
 	d.entries[word] = Entry{Definition: definition}
-	return d.saveToFile()
+	err := d.saveToFile()
+	done <- err
 }
 
 func (d *Dictionary) Get(word string) (Entry, error) {
@@ -36,9 +37,10 @@ func (d *Dictionary) Get(word string) (Entry, error) {
 	return entry, nil
 }
 
-func (d *Dictionary) Remove(word string) error {
+func (d *Dictionary) Remove(word string, done chan<- error) {
 	delete(d.entries, word)
-	return d.saveToFile()
+	err := d.saveToFile()
+	done <- err
 }
 
 func (d *Dictionary) List() ([]string, map[string]Entry) {
@@ -61,7 +63,7 @@ func (d *Dictionary) loadFromFile() error {
 	}
 
 	if err := json.Unmarshal(fileData, &d.entries); err != nil {
-		return fmt.Errorf("Error JSON: %v", err)
+		return fmt.Errorf("Error unmarshalling JSON: %v", err)
 	}
 
 	return nil
@@ -70,7 +72,7 @@ func (d *Dictionary) loadFromFile() error {
 func (d *Dictionary) saveToFile() error {
 	fileData, err := json.MarshalIndent(d.entries, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error JSON: %v", err)
+		return fmt.Errorf("Error marshalling JSON: %v", err)
 	}
 
 	if err := os.WriteFile(d.filePath, fileData, 0644); err != nil {

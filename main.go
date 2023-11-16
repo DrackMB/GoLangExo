@@ -14,6 +14,7 @@ func main() {
 		fmt.Println("Error creating dictionary:", err)
 		return
 	}
+	done := make(chan error)
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -28,11 +29,22 @@ func main() {
 
 		switch command {
 		case "add":
-			actionAdd(d, reader)
+			go func() {
+				actionAdd(d, reader, done)
+			}()
+			if err := <-done; err != nil {
+				fmt.Println("Error adding entry:", err)
+			}
+
 		case "define":
 			actionDefine(d, reader)
 		case "remove":
-			actionRemove(d, reader)
+			go func() {
+				actionRemove(d, reader, done)
+			}()
+			if err := <-done; err != nil {
+				fmt.Println("Error removing entry:", err)
+			}
 		case "list":
 			actionList(d)
 		case "exit":
@@ -44,7 +56,7 @@ func main() {
 	}
 }
 
-func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
+func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader, done chan<- error) {
 	fmt.Print("Enter word: ")
 	word, _ := reader.ReadString('\n')
 	word = strings.TrimSpace(word)
@@ -53,7 +65,7 @@ func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
 	definition, _ := reader.ReadString('\n')
 	definition = strings.TrimSpace(definition)
 
-	d.Add(word, definition)
+	d.Add(word, definition, done)
 	fmt.Println("Word added successfully.")
 }
 
@@ -70,12 +82,12 @@ func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
 	fmt.Printf("Def: %s\n", entry)
 }
 
-func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {
+func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader, done chan<- error) {
 	fmt.Print("Enter word to remove: ")
 	word, _ := reader.ReadString('\n')
 	word = strings.TrimSpace(word)
 
-	d.Remove(word)
+	d.Remove(word, done)
 	fmt.Println("Word removed successfully.")
 }
 
