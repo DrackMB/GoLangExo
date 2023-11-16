@@ -7,7 +7,7 @@ import (
 )
 
 type Entry struct {
-	Definition string `json:"definition"`
+	Definition string
 }
 
 type Dictionary struct {
