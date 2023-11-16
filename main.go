@@ -63,7 +63,7 @@ func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("Data: %s\n", entry.String())
+	fmt.Printf("Def: %s\n", entry.String())
 }
 
 func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {
