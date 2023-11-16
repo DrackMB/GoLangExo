@@ -9,7 +9,11 @@ import (
 )
 
 func main() {
-	d := dictionary.New()
+	d, err := dictionary.New("dictionary.json")
+	if err != nil {
+		fmt.Println("Error creating dictionary:", err)
+		return
+	}
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -63,7 +67,7 @@ func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("Def: %s\n", entry.String())
+	fmt.Printf("Def: %s\n", entry)
 }
 
 func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {
@@ -85,6 +89,6 @@ func actionList(d *dictionary.Dictionary) {
 
 	fmt.Println("\nDictionary:")
 	for word, entry := range entries {
-		fmt.Printf("%s: %s\n", word, entry.String())
+		fmt.Printf("%s: %s\n", word, entry)
 	}
 }
