@@ -1,106 +1,133 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"estiam/dictionary"
 	"fmt"
-	"os"
+	"io"
+	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
+	r := mux.NewRouter()
+	fmt.Println("Starting dictionary server on port 8080")
+
 	d, err := dictionary.New("dictionary.json")
 	if err != nil {
 		fmt.Println("Error creating dictionary:", err)
 		return
 	}
 	done := make(chan error)
-	reader := bufio.NewReader(os.Stdin)
 
-	for {
-		fmt.Print("Enter command (add/define/remove/list/exit): ")
-		command, err := reader.ReadString('\n')
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		done := make(chan error)
+
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Println("error:", err)
-			continue
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		command = strings.TrimSpace(command)
-
-		switch command {
-		case "add":
-			go func() {
-				actionAdd(d, reader, done)
-			}()
-			if err := <-done; err != nil {
-				fmt.Println("Error adding entry:", err)
-			}
-
-		case "define":
-			actionDefine(d, reader)
-		case "remove":
-			go func() {
-				actionRemove(d, reader, done)
-			}()
-			if err := <-done; err != nil {
-				fmt.Println("Error removing entry:", err)
-			}
-		case "list":
-			actionList(d)
-		case "exit":
-			fmt.Println("Exiting program.")
-			os.Exit(0)
-		default:
-			fmt.Println("Invalid command. Try again.")
+		decoder := json.NewDecoder(strings.NewReader(string(body)))
+		var data map[string]string
+		err = decoder.Decode(&data)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
-	}
+
+		word, ok := data["word"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Missing word field in request body"))
+			return
+		}
+
+		definition, ok := data["definition"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Missing definition field in request body"))
+			return
+		}
+
+		go func() {
+			actionAdd(d, word, definition, done)
+		}()
+
+		if err := <-done; err != nil {
+			fmt.Println("Error adding entry:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write([]byte("Entry added successfully"))
+	}).Methods("POST")
+
+	r.HandleFunc("/define/{word}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		word := vars["word"]
+
+		result, err := actionDefine(d, word, done)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		jsonBytes, err := json.Marshal(result)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(jsonBytes)
+
+	}).Methods("GET")
+
+	r.HandleFunc("/remove/{word}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		word := vars["word"]
+		go func() {
+			actionRemove(d, word, done)
+		}()
+		if err := <-done; err != nil {
+			fmt.Println("Error removing entry:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte("Word removed successfully."))
+	}).Methods("DELETE")
+
+	r.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
+		_, entrie := actionList(d)
+		jsonBytes, err := json.Marshal(entrie)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(jsonBytes)
+	}).Methods("GET")
+
+	http.ListenAndServe(":8083", r)
 }
-
-func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader, done chan<- error) {
-	fmt.Print("Enter word: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	fmt.Print("Enter definition: ")
-	definition, _ := reader.ReadString('\n')
-	definition = strings.TrimSpace(definition)
-
+func actionAdd(d *dictionary.Dictionary, word string, definition string, done chan<- error) {
 	d.Add(word, definition, done)
-	fmt.Println("Word added successfully.")
 }
 
-func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
-	fmt.Print("Enter word to define: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	entry, err := d.Get(word)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("Def: %s\n", entry)
+func actionDefine(d *dictionary.Dictionary, word string, done chan<- error) (dictionary.Entry, error) {
+	res, err := d.Get(word)
+	return res, err
 }
 
-func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader, done chan<- error) {
-	fmt.Print("Enter word to remove: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
+func actionRemove(d *dictionary.Dictionary, word string, done chan<- error) {
 	d.Remove(word, done)
 	fmt.Println("Word removed successfully.")
 }
 
-func actionList(d *dictionary.Dictionary) {
+func actionList(d *dictionary.Dictionary) ([]string, map[string]dictionary.Entry) {
 	words, entries := d.List()
-
-	fmt.Println("Words:")
-	for _, word := range words {
-		fmt.Println(word)
-	}
-
-	fmt.Println("\nDictionary:")
-	for word, entry := range entries {
-		fmt.Printf("%s: %s\n", word, entry)
-	}
+	return words, entries
 }
