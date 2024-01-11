@@ -1,0 +1,4 @@
+2024/01/11 12:00:01 Incoming request from [::1]:64723 POST /
+2024/01/11 12:00:07 Incoming request from [::1]:64723 POST /
+2024/01/11 12:00:20 Incoming request from [::1]:64723 GET /list
+2024/01/11 12:01:32 Incoming request from [::1]:64779 GET /list

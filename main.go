@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"estiam/dictionary"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -13,6 +16,7 @@ import (
 
 func main() {
 	r := mux.NewRouter()
+	r.Use(loggingMiddleware)
 	fmt.Println("Starting dictionary server on port 8080")
 
 	d, err := dictionary.New("dictionary.json")
@@ -21,6 +25,7 @@ func main() {
 		return
 	}
 	done := make(chan error)
+	reader := bufio.NewReader(os.Stdin)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		done := make(chan error)
@@ -66,50 +71,20 @@ func main() {
 		w.Write([]byte("Entry added successfully"))
 	}).Methods("POST")
 
-	r.HandleFunc("/define/{word}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		word := vars["word"]
-
-		result, err := actionDefine(d, word, done)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-
-		jsonBytes, err := json.Marshal(result)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(jsonBytes)
-
-	}).Methods("GET")
-
-	r.HandleFunc("/remove/{word}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		word := vars["word"]
+	r.HandleFunc("/define", func(w http.ResponseWriter, r *http.Request) {
+		actionDefine(d, reader)
+	})
+	r.HandleFunc("/remove", func(w http.ResponseWriter, r *http.Request) {
 		go func() {
-			actionRemove(d, word, done)
+			actionRemove(d, reader, done)
 		}()
 		if err := <-done; err != nil {
 			fmt.Println("Error removing entry:", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
 		}
-		w.Write([]byte("Word removed successfully."))
-	}).Methods("DELETE")
-
+	})
 	r.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
-		_, entrie := actionList(d)
-		jsonBytes, err := json.Marshal(entrie)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(jsonBytes)
-	}).Methods("GET")
+		actionList(d)
+	})
 
 	http.ListenAndServe(":8083", r)
 }
@@ -117,17 +92,58 @@ func actionAdd(d *dictionary.Dictionary, word string, definition string, done ch
 	d.Add(word, definition, done)
 }
 
-func actionDefine(d *dictionary.Dictionary, word string, done chan<- error) (dictionary.Entry, error) {
-	res, err := d.Get(word)
-	return res, err
+func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
+	fmt.Print("Enter word to define: ")
+	word, _ := reader.ReadString('\n')
+	word = strings.TrimSpace(word)
+
+	entry, err := d.Get(word)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("Def: %s\n", entry)
 }
 
-func actionRemove(d *dictionary.Dictionary, word string, done chan<- error) {
+func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader, done chan<- error) {
+	fmt.Print("Enter word to remove: ")
+	word, _ := reader.ReadString('\n')
+	word = strings.TrimSpace(word)
+
 	d.Remove(word, done)
 	fmt.Println("Word removed successfully.")
 }
 
-func actionList(d *dictionary.Dictionary) ([]string, map[string]dictionary.Entry) {
+func actionList(d *dictionary.Dictionary) {
 	words, entries := d.List()
-	return words, entries
+
+	fmt.Println("Words:")
+	for _, word := range words {
+		fmt.Println(word)
+	}
+
+	fmt.Println("\nDictionary:")
+	for word, entry := range entries {
+		fmt.Printf("%s: %s\n", word, entry)
+	}
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Open the log file
+		logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer logFile.Close()
+
+		// Set the log output to the file
+		log.SetOutput(logFile)
+
+		// Write log entry
+		log.Println("Incoming request from", r.RemoteAddr, r.Method, r.URL.Path)
+
+		// Forward request to the next handler
+		next.ServeHTTP(w, r)
+	})
 }
