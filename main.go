@@ -16,7 +16,8 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.Use(loggingMiddleware)
+	r.Use(logMiddleware)
+	r.Use(authenticationMiddleware)
 	fmt.Println("Starting dictionary server on port 8080")
 
 	d, err := dictionary.New("dictionary.json")
@@ -59,7 +60,7 @@ func main() {
 		}
 
 		go func() {
-			actionAdd(d, word, definition, done)
+			d.Add(word, definition, done)
 		}()
 
 		if err := <-done; err != nil {
@@ -72,63 +73,48 @@ func main() {
 	}).Methods("POST")
 
 	r.HandleFunc("/define", func(w http.ResponseWriter, r *http.Request) {
-		actionDefine(d, reader)
+		fmt.Print("Enter word to define: ")
+		word, _ := reader.ReadString('\n')
+		word = strings.TrimSpace(word)
+
+		entry, err := d.Get(word)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("Def: %s\n", entry)
 	})
 	r.HandleFunc("/remove", func(w http.ResponseWriter, r *http.Request) {
 		go func() {
-			actionRemove(d, reader, done)
+			fmt.Print("Enter word to remove: ")
+			word, _ := reader.ReadString('\n')
+			word = strings.TrimSpace(word)
+
+			d.Remove(word, done)
+			fmt.Println("Word removed successfully.")
 		}()
 		if err := <-done; err != nil {
 			fmt.Println("Error removing entry:", err)
 		}
 	})
 	r.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
-		actionList(d)
+		words, entries := d.List()
+		fmt.Println(words)
+		w.Header().Set("Content-Type", "application/json")
+		jsonData, err := json.Marshal(entries)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error marshaling JSON: %v", err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
 	})
 
 	http.ListenAndServe(":8083", r)
 }
-func actionAdd(d *dictionary.Dictionary, word string, definition string, done chan<- error) {
-	d.Add(word, definition, done)
-}
 
-func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
-	fmt.Print("Enter word to define: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	entry, err := d.Get(word)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("Def: %s\n", entry)
-}
-
-func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader, done chan<- error) {
-	fmt.Print("Enter word to remove: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	d.Remove(word, done)
-	fmt.Println("Word removed successfully.")
-}
-
-func actionList(d *dictionary.Dictionary) {
-	words, entries := d.List()
-
-	fmt.Println("Words:")
-	for _, word := range words {
-		fmt.Println(word)
-	}
-
-	fmt.Println("\nDictionary:")
-	for word, entry := range entries {
-		fmt.Printf("%s: %s\n", word, entry)
-	}
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
+func logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Open the log file
 		logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -142,6 +128,54 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Write log entry
 		log.Println("Incoming request from", r.RemoteAddr, r.Method, r.URL.Path)
+
+		// Forward request to the next handler
+		next.ServeHTTP(w, r)
+	})
+
+}
+
+var validTokens = map[string]bool{
+	"token1": true,
+	"token2": true,
+}
+
+func authenticationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the token from the request header
+		token := r.Header.Get("Authorization")
+
+		// Validate the token
+		if !isValidToken(token) {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Forward request to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isValidToken(token string) bool {
+	// Check if the token is valid
+	if _, ok := validTokens[token]; !ok {
+		return false
+	}
+
+	return true
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Write log entry
+		log.Println("Incoming request from", r.RemoteAddr, r.Method, r.URL.Path)
+
+		// Validate the token
+		if !isValidToken(r.Header.Get("Authorization")) {
+			log.Println("Invalid token")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 
 		// Forward request to the next handler
 		next.ServeHTTP(w, r)
