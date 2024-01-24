@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"estiam/dictionary"
 	"fmt"
@@ -26,7 +25,6 @@ func main() {
 		return
 	}
 	done := make(chan error)
-	reader := bufio.NewReader(os.Stdin)
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		done := make(chan error)
@@ -58,7 +56,6 @@ func main() {
 			w.Write([]byte("Missing definition field in request body"))
 			return
 		}
-
 		go func() {
 			d.Add(word, definition, done)
 		}()
@@ -68,35 +65,40 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		w.Write([]byte("Entry added successfully"))
 	}).Methods("POST")
 
-	r.HandleFunc("/define", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Print("Enter word to define: ")
-		word, _ := reader.ReadString('\n')
-		word = strings.TrimSpace(word)
+	r.HandleFunc("/define/{word}", func(w http.ResponseWriter, r *http.Request) {
+		word := mux.Vars(r)["word"]
 
 		entry, err := d.Get(word)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("Def: %s\n", entry)
-	})
-	r.HandleFunc("/remove", func(w http.ResponseWriter, r *http.Request) {
-		go func() {
-			fmt.Print("Enter word to remove: ")
-			word, _ := reader.ReadString('\n')
-			word = strings.TrimSpace(word)
+		jsonData, err := json.Marshal(entry)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error marshaling JSON: %v", err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+	}).Methods("GET")
 
+	r.HandleFunc("/remove/{word}", func(w http.ResponseWriter, r *http.Request) {
+		go func() {
+			word := mux.Vars(r)["word"]
+			fmt.Println(word)
 			d.Remove(word, done)
-			fmt.Println("Word removed successfully.")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Word removed successfully."))
 		}()
 		if err := <-done; err != nil {
 			fmt.Println("Error removing entry:", err)
 		}
-	})
+	}).Methods("GET")
+
 	r.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
 		words, entries := d.List()
 		fmt.Println(words)
@@ -109,7 +111,7 @@ func main() {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonData)
-	})
+	}).Methods("GET")
 
 	http.ListenAndServe(":8083", r)
 }
