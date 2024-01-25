@@ -15,18 +15,28 @@ type Dictionary struct {
 	entries  map[string]Entry
 }
 
-func New(filePath string) (*Dictionary, error) {
+func New(filePath string) *Dictionary {
 	d := &Dictionary{filePath: filePath, entries: make(map[string]Entry)}
 	if err := d.loadFromFile(); err != nil {
-		return nil, err
+		return nil
 	}
-	return d, nil
+	return d
 }
 
-func (d *Dictionary) Add(word string, definition string, done chan<- error) {
+func (d *Dictionary) Add(word string, definition string, done chan<- error) error {
+	// Validate the word and definition
+	if word == "" || definition == "" {
+		err := fmt.Errorf("Word or definition cannot be empty")
+		done <- err
+		return err
+	}
+
+	// Add the word to the dictionary
 	d.entries[word] = Entry{Definition: definition}
+
 	err := d.saveToFile()
 	done <- err
+	return nil
 }
 
 func (d *Dictionary) Get(word string) (Entry, error) {
@@ -37,18 +47,24 @@ func (d *Dictionary) Get(word string) (Entry, error) {
 	return entry, nil
 }
 
-func (d *Dictionary) Remove(word string, done chan<- error) {
-	delete(d.entries, word)
-	err := d.saveToFile()
-	done <- err
+func (d *Dictionary) Remove(word string, done chan<- error) error {
+	entry, _ := d.Get(word)
+	if entry != (Entry{}) {
+		delete(d.entries, word)
+		err := d.saveToFile()
+		done <- err
+		return nil
+	}
+	err := fmt.Errorf("error")
+	return err
 }
 
-func (d *Dictionary) List() ([]string, map[string]Entry) {
+func (d *Dictionary) List() ([]string, map[string]Entry, error) {
 	words := make([]string, 0, len(d.entries))
 	for word := range d.entries {
 		words = append(words, word)
 	}
-	return words, d.entries
+	return words, d.entries, nil
 }
 
 func (d *Dictionary) loadFromFile() error {
