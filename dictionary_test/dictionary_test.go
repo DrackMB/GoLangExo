@@ -14,7 +14,8 @@ func TestAddInvalidWord(t *testing.T) {
 
 	// Try adding an invalid word (empty word)
 	done := make(chan error)
-	err := dict.Add("", "Dif", done)
+	go dict.Add("", "Dif", done)
+	err := <-done
 	defer close(done)
 
 	assert.Error(t, err)
