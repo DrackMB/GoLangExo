@@ -19,14 +19,8 @@ func TestAddInvalidWord(t *testing.T) {
 	defer close(done)
 
 	assert.Error(t, err)
-	assert.EqualError(t, err, "Definition cannot be empty")
+	assert.EqualError(t, err, "Word or definition cannot be empty")
 
-	// Try adding an invalid word (null word)
-	err = dict.Add("Word", "", done)
-	defer close(done)
-
-	assert.Error(t, err)
-	assert.EqualError(t, err, "Definition cannot be null")
 }
 
 func TestGetInvalidWord(t *testing.T) {

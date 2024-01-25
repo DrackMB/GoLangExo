@@ -55,7 +55,7 @@ func (d *Dictionary) Remove(word string, done chan<- error) error {
 		done <- err
 		return nil
 	}
-	err := fmt.Errorf("error")
+	err := fmt.Errorf("Word not found: %s", word)
 	return err
 }
 
