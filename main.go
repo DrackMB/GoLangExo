@@ -12,12 +12,11 @@ import (
 var d *dictionary.Dictionary
 
 func main() {
+	d = dictionary.New()
 	r := mux.NewRouter()
 	r.Use(middleware.LogMiddleware)
 	r.Use(middleware.AuthenticationMiddleware)
 	fmt.Println("Starting dictionary server on port 8083")
-
-	d = dictionary.New("dictionary.json")
 
 	r.HandleFunc("/", AddWord).Methods("POST")
 

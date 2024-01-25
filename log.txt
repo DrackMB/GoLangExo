@@ -42,3 +42,77 @@
 2024/01/25 02:22:45 Incoming request from [::1]:55714 GET /list
 2024/01/25 02:22:53 Incoming request from [::1]:55714 GET /define/hello
 2024/01/25 02:26:03 Incoming request from [::1]:55714 GET /define/hello
+2024/01/25 10:03:42 Incoming request from [::1]:50849 GET /list
+2024/01/25 10:04:11 Incoming request from [::1]:50860 GET /list
+2024/01/25 10:04:12 Incoming request from [::1]:50863 GET /list
+2024/01/25 10:04:21 Incoming request from [::1]:50868 GET /define/hello
+2024/01/25 10:07:42 Incoming request from [::1]:50909 GET /list
+2024/01/25 10:07:56 Incoming request from [::1]:50909 POST /
+2024/01/25 10:11:12 Incoming request from [::1]:50934 POST /
+2024/01/25 10:11:19 Incoming request from [::1]:50934 POST /
+2024/01/25 10:15:08 Incoming request from [::1]:50951 GET /define/hello
+2024/01/25 10:16:01 Incoming request from [::1]:50951 GET /define/hello
+2024/01/25 10:17:23 Incoming request from [::1]:50978 GET /define/hello
+2024/01/25 10:21:44 Incoming request from [::1]:51021 GET /define/hello
+2024/01/25 10:21:50 Incoming request from [::1]:51021 POST /
+2024/01/25 10:32:32 Incoming request from [::1]:51089 POST /
+2024/01/25 10:32:41 Incoming request from [::1]:51089 GET /list
+2024/01/25 10:32:42 Incoming request from [::1]:51089 GET /list
+2024/01/25 10:35:27 Incoming request from [::1]:51089 POST /
+2024/01/25 10:37:24 Incoming request from [::1]:51478 POST /
+2024/01/25 10:37:53 Incoming request from [::1]:51483 POST /
+2024/01/25 10:38:40 Incoming request from [::1]:51483 POST /
+2024/01/25 10:45:02 Incoming request from [::1]:51516 POST /
+2024/01/25 10:45:03 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:45:34 Incoming request from [::1]:51516 GET /list
+2024/01/25 10:46:50 Incoming request from [::1]:51516 POST /
+2024/01/25 10:46:50 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:47:20 Incoming request from [::1]:51516 POST /
+2024/01/25 10:47:20 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:48:19 Incoming request from [::1]:51516 POST /
+2024/01/25 10:48:19 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:49:32 Incoming request from [::1]:51516 POST /
+2024/01/25 10:49:32 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:49:33 Incoming request from [::1]:51516 POST /
+2024/01/25 10:49:33 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:49:34 Incoming request from [::1]:51516 POST /
+2024/01/25 10:49:34 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:49:35 Incoming request from [::1]:51516 POST /
+2024/01/25 10:49:35 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:51:16 Incoming request from [::1]:51660 POST /
+2024/01/25 10:51:17 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:57:54 Incoming request from [::1]:51760 POST /
+2024/01/25 10:57:55 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 10:58:31 Incoming request from [::1]:51760 GET /list
+2024/01/25 11:02:10 Incoming request from [::1]:51816 GET /list
+2024/01/25 11:03:32 Incoming request from [::1]:51827 GET /list
+2024/01/25 11:07:21 Incoming request from [::1]:51858 GET /list
+2024/01/25 11:07:38 Incoming request from [::1]:51858 POST /
+2024/01/25 11:07:38 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 11:07:42 Incoming request from [::1]:51858 GET /list
+2024/01/25 11:08:01 Incoming request from [::1]:51858 GET /list
+2024/01/25 11:08:11 Incoming request from [::1]:51858 DELETE /remove/mb
+2024/01/25 11:08:24 Incoming request from [::1]:51873 GET /list
+2024/01/25 11:25:42 Incoming request from [::1]:51873 GET /list
+2024/01/25 11:25:49 Incoming request from [::1]:51873 POST /
+2024/01/25 11:25:49 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 11:25:52 Incoming request from [::1]:51873 GET /list
+2024/01/25 11:25:56 Incoming request from [::1]:51873 DELETE /remove/mb
+2024/01/25 11:28:18 Incoming request from [::1]:52010 GET /list
+2024/01/25 11:28:22 Incoming request from [::1]:52010 POST /
+2024/01/25 11:28:22 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 11:28:25 Incoming request from [::1]:52010 GET /list
+2024/01/25 11:28:49 Incoming request from [::1]:52010 DELETE /remove/mb
+2024/01/25 11:30:18 Incoming request from [::1]:52029 DELETE /remove/mb
+2024/01/25 11:32:38 Incoming request from [::1]:52062 POST /
+2024/01/25 11:32:39 http: superfluous response.WriteHeader call from main.AddWord (services.go:61)
+2024/01/25 11:32:44 Incoming request from [::1]:52062 GET /list
+2024/01/25 11:32:47 Incoming request from [::1]:52062 DELETE /remove/mb
+2024/01/25 11:32:51 Incoming request from [::1]:52062 GET /list
+2024/01/25 11:32:57 Incoming request from [::1]:52062 DELETE /remove/mb
+2024/01/25 11:33:00 Incoming request from [::1]:52062 GET /list
+2024/01/25 11:33:39 Incoming request from [::1]:52062 GET /define/hello
+2024/01/25 11:33:51 Incoming request from [::1]:52062 GET /define/mb23
+2024/01/25 11:36:58 Incoming request from [::1]:52097 DELETE /remove/mb
+2024/01/25 11:41:05 Incoming request from [::1]:52097 GET /list
+2024/01/25 13:18:51 Incoming request from [::1]:52756 GET /define/m

@@ -1,99 +1,114 @@
 package dictionary
 
 import (
-	"encoding/json"
+	"context"
+	"estiam/db"
 	"fmt"
-	"os"
+	"log"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type Entry struct {
-	Definition string
+	Word       string `json:"word"`
+	Definition string `json:"definition"`
 }
 
 type Dictionary struct {
-	filePath string
-	entries  map[string]Entry
+	Db *redis.Client
 }
 
-func New(filePath string) *Dictionary {
-	d := &Dictionary{filePath: filePath, entries: make(map[string]Entry)}
-	if err := d.loadFromFile(); err != nil {
-		return nil
+func New() *Dictionary {
+	return &Dictionary{
+		Db: db.DatabaseConnect(),
 	}
-	return d
 }
 
-func (d *Dictionary) Add(word string, definition string, done chan<- error) error {
+func (d *Dictionary) Add(ctx context.Context, entry Entry, done chan<- error) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // Ensure the context is canceled to avoid leaks
+	fmt.Printf(entry.Definition)
 	// Validate the word and definition
-	if word == "" || definition == "" {
+	if entry.Word == "" || entry.Definition == "" {
 		err := fmt.Errorf("Word or definition cannot be empty")
-		done <- err
 		return err
 	}
 
-	// Add the word to the dictionary
-	d.entries[word] = Entry{Definition: definition}
+	// Create a goroutine to handle the operation and signal completion
+	go func() {
+		defer close(done) // Close the channel when the operation finishes
+		fmt.Println(entry)
+		// Add the word to the dictionary
+		err := d.Db.Set(ctx, entry.Word, entry.Definition, 0).Err()
+		if err != nil {
+			done <- fmt.Errorf("Error adding word to database: %s", err)
+			return
+		}
 
-	err := d.saveToFile()
-	done <- err
-	return nil
+		done <- nil // Signal completion
+	}()
+
+	// Wait for the goroutine to signal completion before returning
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("Operation timed out")
+	}
 }
 
 func (d *Dictionary) Get(word string) (Entry, error) {
-	entry, exists := d.entries[word]
-	if !exists {
+	val, err := d.Db.Get(context.Background(), word).Result()
+	if err == redis.Nil {
 		return Entry{}, fmt.Errorf("Word not found: %s", word)
+	} else if err != nil {
+		log.Fatal(err)
 	}
-	return entry, nil
+	return Entry{Word: word, Definition: val}, nil
 }
 
 func (d *Dictionary) Remove(word string, done chan<- error) error {
-	entry, _ := d.Get(word)
-	if entry != (Entry{}) {
-		delete(d.entries, word)
-		err := d.saveToFile()
-		done <- err
-		return nil
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel() // Automatically cancel the context on function exit
+
+	// Wait for the context to be canceled or the operation to complete
+	go func() {
+		err := d.Db.Del(ctx, word).Err()
+		if err != nil && err != context.DeadlineExceeded {
+			done <- fmt.Errorf("error deleting word: %s", word)
+		} else {
+			done <- nil
+		}
+	}()
+
+	// Wait for the goroutine to signal completion
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("Word not found: %s", word)
 	}
-	err := fmt.Errorf("Word not found: %s", word)
-	return err
 }
 
-func (d *Dictionary) List() ([]string, map[string]Entry, error) {
-	words := make([]string, 0, len(d.entries))
-	for word := range d.entries {
-		words = append(words, word)
-	}
-	return words, d.entries, nil
-}
+func (d *Dictionary) List() ([]Entry, error) {
+	ctx := context.Background()
 
-func (d *Dictionary) loadFromFile() error {
-	fileData, err := os.ReadFile(d.filePath)
+	keys, err := d.Db.Keys(ctx, "*").Result()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	if len(fileData) == 0 {
-		d.entries = make(map[string]Entry)
-		return nil
+	var entries []Entry
+	for _, key := range keys {
+		fmt.Printf(key)
+		value, err := d.Db.Get(ctx, key).Result()
+		fmt.Printf(value)
+		if err != nil {
+			return nil, err
+		}
+
+		var entry Entry
+		entry.Definition = value
+		entry.Word = key
+		entries = append(entries, entry)
 	}
 
-	if err := json.Unmarshal(fileData, &d.entries); err != nil {
-		return fmt.Errorf("Error unmarshalling JSON: %v", err)
-	}
-
-	return nil
-}
-
-func (d *Dictionary) saveToFile() error {
-	fileData, err := json.MarshalIndent(d.entries, "", "  ")
-	if err != nil {
-		return fmt.Errorf("Error marshalling JSON: %v", err)
-	}
-
-	if err := os.WriteFile(d.filePath, fileData, 0644); err != nil {
-		return fmt.Errorf("Error writing to file: %v", err)
-	}
-
-	return nil
+	return entries, nil
 }
